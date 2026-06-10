@@ -10,6 +10,7 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     question: Mapped[str] = mapped_column(String)
     answer: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="PENDING")
 
 class Metric(Base):
     __tablename__ = "metrics"
