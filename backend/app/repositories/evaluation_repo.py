@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.schemas.evaluation import EvaluationRequest
 from app.db.models import Evaluation 
 
-def save_evaluation(request: EvaluationRequest, db: Session) -> Evaluation:
+def save_evaluation(db: Session, request: EvaluationRequest) -> Evaluation:
     #1. Map the bouncer datat to db model
     new_eval = Evaluation(
         question=request.question,
