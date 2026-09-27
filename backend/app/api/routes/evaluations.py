@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
-from app.schemas.evaluation import EvaluationRequest
-from app.db.models import Evaluation 
+from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
+from app.db.models import Evaluation, Metric
 from app.db.session import SessionLocal
 
 # Add our Head Chef import!
@@ -16,14 +17,42 @@ def get_db():
     finally:
         db.close()      
 
-@router.post("/evaluations")
+@router.post("/evaluations", response_model=EvaluationResponse)
 def create_evaluation(request: EvaluationRequest, db: Session = Depends(get_db)):
-    # The Waiter literally just hands the order to the Chef!
-    new_evaluation = evaluation_service.process_new_evaluation(db, request)
+    #1. The Waiter literally just hands the order to the Chef!
+    eval_result = evaluation_service.process_new_evaluation(db, request)
 
-    return {"message": "Saved via Clean Architecture!", "id": new_evaluation.id}
+    #2. Fetch the newly computed metric score
+    metric = db.query(Metric).filter(Metric.evaluation_id == eval_result.id).first()
+    score = metric.score if metric else None
 
-@router.get("/evaluations/{evaluation_id}")
+    #3. Return the full response matching EvaluationResponse
+    return EvaluationResponse(
+        id=eval_result.id,
+        question=eval_result.question,
+        answer=eval_result.answer,
+        status=eval_result.status,
+        score=score
+    )
+
+@router.get("/evaluations/{evaluation_id}", response_model=EvaluationResponse)
 def read_evaluation(evaluation_id: int, db: Session = Depends(get_db)):
+    #1. Search for the evaluation in the database 
     evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
-    return evaluation 
+
+    #2. If it does not exist, return a 404 error
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+
+    #3. Look up the score
+    metric = db.query(Metric).filter(Metric.evaluation_id == evaluation_id).first()
+    score = metric.score if metric else None
+
+    #4. Return the clean response
+    return EvaluationResponse(
+        id=evaluation_id,
+        question=evaluation.question,
+        answer=evaluation.answer,
+        status=evaluation.status,
+        score=score
+    )
