@@ -56,3 +56,25 @@ def read_evaluation(evaluation_id: int, db: Session = Depends(get_db)):
         status=evaluation.status,
         score=score
     )
+
+@router.get("/evaluations", response_model=list[EvaluationResponse])
+def list_evaluations(db: Session = Depends(get_db)):
+    #1. Fetch all evaluations from the database
+    evaluations = db.query(Evaluation).all()
+
+    #2. Build the list of response items with their scores
+    results = []
+    for evaluation in evaluations:
+        metric = db.query(Metric).filter(Metric.evaluation_id == evaluation.id).first()
+        score = metric.score if metric else None
+
+        results.append(
+            EvaluationResponse(
+                id=evaluation.id,
+                question=evaluation.question,
+                answer=evaluation.answer,
+                status=evaluation.status,
+                score=score
+            )
+        )
+    return results
